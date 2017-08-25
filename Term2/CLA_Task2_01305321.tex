@@ -1,0 +1,562 @@
+\documentclass[11pt,oneside]{article}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper,total={170mm,257mm},left=20mm,top=20mm,}
+\usepackage{listings}
+\usepackage{geometry}
+\usepackage{upgreek}
+\usepackage{amsmath,amssymb}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \vspace*{1cm}
+        \huge
+        \textbf{Computational Linear Algebra}
+        \\
+        \vspace{0.5cm}
+        \large
+        Assignment 2
+        
+        \vspace{1.5cm}
+        \LARGE
+        \textbf{James Gross} 
+        
+        \vspace{0.5cm}
+        \textbf{CID: 01305321}
+        
+        \vfill
+        
+        \vspace{0.8cm}
+        
+        \includegraphics[width=0.6\textwidth]{logo_imperial.png}
+        
+        Department of Aeronautics\\
+        April 5, 2017
+        
+    \end{center}
+\end{titlepage}
+
+\setcounter{page}{1}
+
+\section*{Tasks 1 and 2}
+
+The first two tasks are not included as I have not participated in the Structural Dynamics course. All subsequent analysis has been performed using the stiffness and mass matrices provided by Ruoyu Liu. These matrices are presented here for reference.
+
+\begin{equation}
+K = 
+	\begin{bmatrix}
+       	11.0728 & -4.6728 & 0 & 0   			\\[0.3em]
+       	-4.6728 & 8.0694 & -4.6728 & 0       \\[0.3em]
+      	0 & -3.3966 & 5.8529 & -2.4563		\\[0.3em]
+		0 & 0 & -2.4563 & 2.4563			  	\\[0.3em]
+  \end{bmatrix}
+\end{equation}
+
+\begin{equation}
+M = 
+	\begin{bmatrix}
+       	4.1108 & 0.8054 & 0 & 0   			\\[0.3em]
+       	0.8054 & 2.6441 & 0.5167 & 0       	\\[0.3em]
+      	0 & 0.5167 & 1.6928 & 0.3297			\\[0.3em]
+		0 & 0 & 0.3297 & 0.6595			  	\\[0.3em]
+  \end{bmatrix}
+\end{equation}
+
+Note the above matrices are for a system consisting of four elements, where the first node has been removed, because it will give an eigenvalue of zero. 
+
+\section*{Task 3: Solving the Eigenvalue Problem}
+
+\subsection*{Rayleigh Quotient Iteration with Householder Deflation}
+
+The Rayleigh Quotient Iteration is an Inverse Power Shift method that employs an accelerated shift by using an initial guess of eigenvector to create a close approximation of an eigenvalue. Once the iteration has converged to an eigenpair, they are effectively removed by employing a Householder deflation to reduce the dimensionality of the problem.
+
+\begin{lstlisting}[language=Matlab]
+%% Function to compute eigenvalues and eigenvectors
+% Inputs: K and M matrices
+% Ouputs: Matrices of eigenvectors V and eigenvalues D
+function [V, D] = RQI_HHD(K, M)
+    n = length(K);
+    V = zeros(n); % Matrix of eigenvectors
+    D = zeros(n); % Matrix of eigenvalues on the diagonal
+    C = LU_Solver(M, K, n, n); % Change to simple eigenvalue problem
+    B = C; % Save the result
+    
+    x = rand(n, 1); % Specify initial guess
+    [v, lambda] = RQI(B, x, 0.0000001, n); % Compute eigenpair
+    D(1,1) = lambda; % Save eigenvalue
+    V(:, 1) = v; % Save eigenvector
+
+    for i = 1:n-1
+        B = HHD(B, v); % Compute Householder transformation
+        B(1,:) = []; % Reduce dimensionality of the problem
+        B(:,1) = []; % by deleting rows and column containing
+        v(1) = [];   % the already computed eigenvalue
+        x(1) = [];
+        if i == n-1 % If scalar system, set eigenvalue as value
+            lambda = B(1,1);
+        else
+            x = rand(n-i, 1); % Generate new x
+            [v, lambda] = RQI(B, x, 0.0000001, n-i);
+        end
+        D(i+1, i+1) = lambda; % Save eigenvalue
+        V(:,i+1) = Inverse_Power_Shift(C, rand(n,1), lambda, n);
+        % Use Inverse Power shift to find eigenvectors
+    end
+end
+\end{lstlisting}
+
+The above routine finds $\mathbf{M}^{-1}\mathbf{K}$ by using LU factorization and forward \& backward substitution in a routine called \texttt{LU\_Solver}, which further employs subroutines \texttt{gefa}, which LU factorises, and \texttt{gesl}, which uses forward and backward substitution to solve. The source code for the aforementioned subroutines are included below.
+
+\begin{lstlisting}[language=Matlab]
+%% Solve matrix system AX=B using LU factorization
+% Inputs: Matrices A & B, rows n, columns m
+% Outputs: Solution matrix X
+function X = LU_Solver(A, B, n, m)
+    A = gefa(A, n); % LU factorise A
+    X = zeros(n, m); % Initialise solution
+    
+    for i = 1:m % Iterate through columns of X
+        X(:,i) = gesl(A, n, B(:, i)); % Solve for each column
+    end
+end
+\end{lstlisting}
+
+\begin{lstlisting}[language=Matlab]
+%% LU factorise matrix A
+% Author: Kevin Gouder
+% Inputs: Matrix A and problem size n
+% Outputs: LU factorised A
+function A = gefa(A,n)
+
+    for k = 1:n-1
+        % Create L matrix
+        A(k+1:n,k) = A(k+1:n,k)/A(k,k);
+
+        for j = k+1:n
+            % Create U matrix
+            A(k+1:n,j) = A(k+1:n,j) - A(k,j)*A(k+1:n,k);
+        end
+    end
+end
+\end{lstlisting}
+
+\begin{lstlisting}[language=Matlab]
+%% Use LU factorised matrix to solve
+% Author: Kevin Gouder
+% Inputs: LU factorised matrix a, problem size n, vector b
+% Outputs: Solution vector x
+function x = gesl(a,n,b)
+    % Forward Substitution
+    for k = 1:n-1
+        b(k+1:n) = b(k+1:n)-b(k)*a(k+1:n,k);
+    end
+    % Backward Substitution
+    for k = n:-1:1
+        b(k) = b(k)/a(k,k);
+        b(1:k-1) = b(1:k-1)-b(k)*a(1:k-1,k);
+    end
+    x = b; % Save to solution
+end
+\end{lstlisting}
+
+After this, an initial guess is specified. A random vector is chosen here to allow for all possibilities of directions for the eigenvector. If a specific direction was chosen, then the initial guess might point very strongly in the direction of a certain eigenvector, causing trouble when calculating other eigenpairs. The source code for this subroutine is included below.
+
+\begin{lstlisting}[language=Matlab]
+%% Rayleigh Quotient function to find eigenvalues and eigenvectors
+% Inputs: Matrix A & B, initial guess x, tolerance epsilon, and maximum
+% number of iterations maxi
+% Outputs: Eigenvector v and eigenvalue lambda
+function [v,lambda] = RQI(A, x, epsilon, n)
+    v = LU_Solver(A, x, n, 1);
+    lambda = norm(x); % Initial guess of eigenvalue
+
+    for k = 0:1000
+        C = A-lambda*eye(n); % Shifted matrix
+        v = LU_Solver(C, x, n, 1); 
+        v = v / norm(v); % Normalise
+        sigma = (v'*A*v) / (v'*v); % Rayleigh quotient
+        if abs(sigma-lambda) < epsilon % Break if reaches tolerance
+            return;
+        end
+        x = v; % New eigenvector
+        lambda = sigma; % New eigenvalue
+    end
+end
+\end{lstlisting}
+
+The above subroutine initially employs an Inverse Power method to point towards the least dominant eigenpair. This generally will produce the eigenvalues in ascending order, however there is still a level of randomness involved. This sometimes produces errors when deploying the Householder transformation. The first eigenvector and eigenvalue are saved in matrices \textbf{V} and \textbf{D} respectively. 
+
+After finding the initial eigenpair, a Householder deflation is then iteratively used to reduce the dimensionality of the problem by removing the previous eigenpair from the system. The subroutine for the Householder deflation can be seen below.
+
+\begin{lstlisting}[language=Matlab]
+%% Function to perform Householder transformation
+% Inputs: Matrix A and eigenvector x
+% Outputs: Householder transformation of A
+function A = HHD(A, x)
+    alpha = -sign(x(2))*norm(x); % Compute the scaling
+    x1 = x(1); % Save first value for calculation
+    v = zeros(size(x)); % Initialise the orthogonal unit vector
+    v(1) = sqrt(0.5*(1.0-(x1/alpha)));
+    for i = 2:length(v)
+        v(i) = sqrt((x(i)^2) / (2*(alpha^2)*(1.0-(x1/alpha))));
+    end
+    H = (eye(length(v)))-2*(v*v'); % Creates the Householder matrix
+    A = H*A*H; % Computes the Householder transformation
+end
+\end{lstlisting}
+
+Note that in the above subroutine, the scaling factor is initially multiplied by the negative of the sign of the second entry in the eigenvector. This is to ensure consistency in the transformation, as eigenvectors returned from the \texttt{RQI} subroutine may be negatively scaled, which may return an inaccurate Householder matrix. By scaling the orthogonal unit vector by the negative of the sign of the second entry, the Householder transformation becomes more consistent. However, it should also be noted that the above subroutine is rather dependent on receiving the eigenvalues in ascending order, beginning from the least dominant value. Generally this is not an issue as the initial use of an inverse power shift generally points towards the least dominant eigenvalue.
+
+The dimensionality of the system is reduced by using this transformation and the subsequent eigenvalues are then stored. The eigenvector is then solved for by using an Inverse Power shift method with the previous value being used as an approximate shift. The source code for this subroutine is included below.
+
+\begin{lstlisting}[language=Matlab]
+%% Function to calculate eigenvectors
+% Inputs: The matrix A, initial guess of eigenvector x, 
+% and eigenvalue lambda
+% Outputs: The eigenvector x
+function x = Inverse_Power_Shift(A, x, lambda, n)
+    alpha = lambda + 0.2; % Creates shift by perturbing the eigenvalue
+    C = A - alpha*eye(n); % Shifted matrix
+    
+    for k = 1:1000
+        y = LU_Solver(C, x, n, 1);
+        y = y/norm(y, 'fro'); % Normalise solution
+        x = y;
+        sigma = (x'*A*x); % Comparison eigenvalue
+        if abs(lambda - sigma) < 0.000001 
+            return;
+        end
+    end
+end
+\end{lstlisting}
+
+The inverse power shift method was chosen here because in general it is very cheap to find eigenvectors once the corresponding eigenvalues have been found. This is in comparison to using the Householder deflation to finding the corresponding eigenvectors, which in general is very expensive.
+
+Once it has converged to the correct eigenvector, this result is saved in the corresponding matrix, and when all eigenpairs have been recovered, the subroutine returns the matrix \textbf{V} of eigenvectors and the matrix \textbf{D} of eigenvalues.
+
+\subsection*{QR Iteration}
+
+The QR Iteration is a method that uses the orthogonality of eigenvectors to find all the eigenpairs simultaneously. This makes it a very powerful, yet simple method if one wishes to find all eigenpairs of the system. The following subroutine will find all eigenpairs by using a QR Iteration. 
+
+\begin{lstlisting}[language=Matlab]
+%% QR Iteration Function
+% Inputs: Matrices K & M and problem size n
+% Outputs: Matrix of eigenvectors V and matrix of eigenvalues D
+function [V,D] = QRITER(K, M)
+    n = length(K);
+    B = LU_Solver(M, K, n, n); % Transform to a simple EVP
+    V = eye(n); % Initialise Schur vectors
+    D = zeros(n); % Initialise the eigenvalue
+    for k = 1:1000
+        [Q, R] = QRdecomp(B, n); % QR decompose the matrix B
+        B = R*Q; % Set B to be product RQ
+        V = V*Q; % Schur vectors
+        err = norm(diag(D) - diag(B), inf); % Error between eigenvalues
+        if err < 0.000001; % Break if tolerance is met]
+            Vt = zeros(n);
+            x = rand(n, 1);
+            % Eigenvectors of Schur Transformation
+            for i = 1:n
+                Vt(:, i) = Inverse_Power_Shift(B, x, B(i,i), n);
+            end
+            V = V*Vt; % Eigenvectors  
+            return
+        end
+        D = diag(diag(B)); % Save new eigenvalues for comparison
+    end
+end
+\end{lstlisting}
+
+Note that in the above subroutine, a QR decomposition must be calculated at each iteration. This proves to be fairly expensive procedure, and this might be improved by using an implicit QR iteration. Furthermore, the above subroutine may be accelerated by using a shift at each iteration. The subroutine for the QR decomposition may be seen below.
+
+\begin{lstlisting}[language=Matlab]
+%% QR Decomposition function
+% Inputs: Matrix B and problem size n
+% Outputs: Matrices Q and R
+function [Q, R] = QRdecomp(B, n)
+    Q = zeros(n); 
+    Q(:,1) = B(:, 1)/norm(B(:, 1), 'fro'); % Set first column of Q
+    for i = 2:n
+        Q(:,i) = B(:, i);
+        for j = 1:i-1
+            Q(:,i) = Q(:,i) - projection(Q(:,j), B(:, i), n); 
+            % Orthogonalise the columns of Q
+        end
+        Q(:,i) = Q(:,i)/norm(Q(:,i), 'fro'); % Normalise
+    end
+    
+    R = zeros(n);
+    for i = 1:n
+        for j = 1:n
+            if i <= j
+                R(i,j) = dot(Q(:,i), B(:, j)); % Specify entries in R
+            end
+        end
+    end
+end
+\end{lstlisting}
+
+The previous eigenvalues are then compared to the subsequent eigenvalues at each time step. In order to find the eigenvectors of the system, the eigenvectors of the Schur Matrix $\mathbf{B}$ are computed using inverse power shift iteration, and then multiplied by the matrix $\mathbf{V} = \sum_{k = 0}^i \mathbf{Q}_i$, where $i$ is the number of iterations until convergence.
+
+\subsection*{Subspace Iteration using the Ritz Eigenvalue Problem}
+
+The Subspace Iteration also uses the orthogonality of eigenvectors to compute eigenpairs, however it reduces the dimensionality of the problem by solving the Ritz Eigenvalue Problem, rather than for the larger system. This makes it particularly effective for computing a number of dominant eigenpairs in a very large matrix system. Subspace iteration can be further improved by using locking, a technique where converged eigenvectors are not considered in the power iteration, thereby reducing computational cost for very large systems. The subroutine used can be seen below.
+
+\begin{lstlisting}[language=Matlab]
+%% Subspace Iteration Function
+% Inputs: Matrices K and M and reduction m
+% Outputs: Matrix of eigenvectors X and eigenvalues D
+% Note: Only outputs m eigenvalues and eigenvectors
+function [X, D] = SSI_RITZ(K, M, m)
+    n = length(K);
+    X  = rand(n, m); % Randomise an initial guess
+    A = LU_Solver(M, K, n, n); % Convert to Simple eigenvalue problem
+    A = A*A; % Multistep 
+    B = zeros(m);
+    for i = 1:1000
+        Xnew = A*X; % Power Iteration
+        Xnew = orth(Xnew); % Orthonormalise the results
+        [V, D] = RITZ(Xnew, K, M, m); % Solve Ritz problem
+        Xnew = Xnew*V; % Transform to n sized problem
+        if norm((D - B), inf) < 0.000001 
+            % Break when eigenvalues converge
+            X = Xnew; % Eigenvectors
+            B = D; % Eigenvalues
+            return;
+        end
+        X = Xnew;
+        B = D;
+    end
+end
+\end{lstlisting}
+
+Note that the above subroutine uses a multi-step power iteration before orthonormalising the result. This is because orthonormalisation is rather expensive, and therefore should not be employed too frequently. Afterwards, the smaller Ritz eigenvalue problem is solved using QR iteration. The source code for the \texttt{RITZ} subroutine can be seen below.
+
+\begin{lstlisting}[language=Matlab]
+%% Function to perform Ritz Reduction
+% Inputs: Matrices X, K, and M and reduction size m
+% Outputs: New Matrix X that will be eigenvectors upon convergence
+function [V, D] = RITZ(X, K, M, m)
+        Kbar = X'*K*X; % Define the reduced K
+        Mbar = X'*M*X; % Define the reduced M
+        [V,D] = QRITER(Kbar, Mbar);
+end
+\end{lstlisting}
+
+Note that the above subroutine uses the \texttt{QRITER} subroutine from before to solve the Ritz eigenvalue problem. If  the reduction size is the same as the problem size i.e. $m=n$, there is no computational saving, and in fact many extra computations are incurred. Therefore, it should be noted that this subroutine is generally best employed when the size of the problem is much less than the number of desired eigenvalues. 
+
+The eigenvectors from this problem are then transformed to the larger problem by multiplying by the power iterated, orthonormalised initial guess.
+
+\subsection*{Storage Methods}
+
+In the above subroutines, the general eigenvalue problem $\mathbf{K} \mathbf{x} =\lambda \textbf{M} \mathbf{x}$ has been transformed to the simple eigenvalue problem $ \textbf{M}^{-1} \mathbf{K} \mathbf{x} =\lambda \mathbf{x}$. Although employing this conversion leads to a loss of symmetry and removes the banded structure, thereby increasing computational cost, there were numerous reasons to make this conversion. 
+
+Namely, when using the Householder deflation to reduce the problem size, the Householder transformation requires an eigenvalue of the system before reduction can appropriately occur. This is more readily done when using the simple eigenvalue problem. Also, QR iteration can only be used to solve the simple eigenvalue problem, and therefore the banded nature of the original problem may not be used regardless. Furthermore, in the \texttt{SSI\_RITZ} subroutine, the initial power iteration is performed using a multistep method as to quicken the convergence and avoid many unnecessary orthonormalisations. This was more readily accomplished by creating the matrix $\mathbf{A} = \textbf{M}^{-1} \mathbf{K}$, and then squaring the result. Furthermore, the Ritz problem is then solved using QR iteration, and therefore the banded structure is not used.
+
+When appropriate, the matrices used were stored in sparse format. This means that only non-zero values and their indices were stored. The stiffness and mass matrices given above are tridiagonal matrices, and will in general have many zero diagonals. Therefore by ignoring the zero diagonals and only considering the populated diagonals, the computational cost is dramatically reduced for very large sparse systems.
+
+\subsection*{Sensitivity of Matrix A}
+
+In order to test the sensitivity of each of the above subroutines with respect to small changes in the matrix \textbf{A}, a small perturbation matrix of varying magnitudes was added to \textbf{A}. The subroutines were then run using this perturbed matrix $\mathbf{\hat{A}}$. An average of the maximum error of the eigenvalues for \textbf{A} between $\mathbf{\hat{A}}$ have been compared. The results can be found below.
+
+\begin{center}
+	\begin{tabular}{| l | l | l | l | l |}
+	\hline
+	& $\mathcal{O}(10^0)$ & $\mathcal{O}(10^{-1})$ & $\mathcal{O}(10^{-2})$ & $\mathcal{O}(10^{-3})$	\\ \hline
+	RQI\_HHD 
+	& 1.2208
+  	& 0.3865
+  	& 0.0415
+  	& 0.0047
+  	\\ \hline
+  	QRITER
+  	& 1.1648
+ 	 & 0.2298
+ 	 & 0.0162
+ 	 & 0.0023
+ 	\\ \hline
+    SSI\_RITZ
+  	& 1.1573
+  	& 0.1691
+  	& 0.0122
+  	& 0.0024
+  	\\ \hline
+	\end{tabular}
+\end{center}
+
+As can be seen in the table above, the \texttt{RQI\_HHD} subroutine is the most sensitive to perturbations to the matrix \textbf{A}. This may be due to the fact that this subroutine is the most dependent on solutions of matrix systems involving matrix \textbf{A}. Therefore, even very small perturbations lead to considerably larger incurred error. On the other hand, the other subroutines were not nearly so dependent on solutions of matrix systems, and had relatively lower levels of incurred error.
+
+\section*{Task 4: Accuracy and Computational Cost of the Methods}
+
+Using the above subroutines with the matrices given in Tasks 1 and 2, the eigenpairs were calculated and compared with the result given by using the \texttt{eigs} function in Matlab. The results can be seen in the table below. Note that to compare the results easily, all eigenpairs have been stored in ascending order, beginning with the least dominant. Furthermore, the eigenvectors have been normalised using the infinite norm and further scaled by using the sign of the second entry in each column. This allows comparisons to be made more readily.
+
+\begin{center}
+
+	\begin{tabular}{| l | l | l |}
+		\hline
+		 & Eigenvalues & Eigenvectors \\ \hline
+		\texttt{eigs}
+		& $	\begin{bmatrix}
+       	0.2746 & 0 & 0 & 0   			\\[0.1em]
+       	0 & 1.6710 & 0 & 0       	\\[0.1em]
+      	0 & 0 & 5.1180 & 0			\\[0.1em]
+		0 & 0 & 0 & 11.0968			  	\\[0.1em]
+  \end{bmatrix}$
+		&  
+		$	\begin{bmatrix}
+       	-0.3153 & -0.5530 & 0.5143 & -0.1797   			\\[0.1em]
+       	-0.6406 & -0.3862 & -0.5828 & 0.4562       	\\[0.1em]
+      	-0.8934 & 0.4503 & -0.2217 & -0.7950			\\[0.1em]
+		-1.0000 & 1.0000 & 1.0000 & 1.0000			  	\\[0.1em]
+  \end{bmatrix}$ \\ \hline
+	\texttt{RQI\_HHD}
+	& 
+	$	\begin{bmatrix}
+       	0.2746 & 0 & 0 & 0   			\\[0.1em]
+       	0 & 1.6710 & 0 & 0       	\\[0.1em]
+      	0 & 0 & 5.1180 & 0			\\[0.1em]
+		0 & 0 & 0 & 11.0968			  	\\[0.1em]
+  \end{bmatrix}$	
+  & 
+  $	\begin{bmatrix}
+       	-0.3153 & 0.5530 & 0.5143 & -0.1797   			\\[0.1em]
+       	-0.6406 & 0.3862 & -0.5828 & 0.4562       	\\[0.1em]
+      	-0.8934 & -0.4503 & -0.2217 & -0.7950			\\[0.1em]
+		-1.0000 & -1.0000 & 1.0000 & 1.0000			  	\\[0.1em]
+  \end{bmatrix}$ \\ \hline
+  \texttt{QRITER}
+  &
+  $	\begin{bmatrix}
+       	0.2746 & 0 & 0 & 0   			\\[0.1em]
+       	0 & 1.6710 & 0 & 0       	\\[0.1em]
+      	0 & 0 & 5.1180 & 0			\\[0.1em]
+		0 & 0 & 0 & 11.0968			  	\\[0.1em]
+  \end{bmatrix}$
+  & 
+  $	\begin{bmatrix}
+       	-0.3153 & 0.5530 & 0.5143 & -0.1797   			\\[0.1em]
+       	-0.6406 & 0.3862 & -0.5828 & 0.4562       	\\[0.1em]
+      	-0.8934 & -0.4503 & -0.2217 & -0.7950			\\[0.1em]
+		-1.0000 & -1.0000 & 1.0000 & 1.0000			  	\\[0.1em]
+  \end{bmatrix}$ \\ \hline
+    \texttt{SSI\_RITZ}
+  &
+  $	\begin{bmatrix}
+       	0.2746 & 0 & 0 & 0   			\\[0.1em]
+       	0 & 1.6710 & 0 & 0       	\\[0.1em]
+      	0 & 0 & 5.1180 & 0			\\[0.1em]
+		0 & 0 & 0 & 11.0968			  	\\[0.1em]
+  \end{bmatrix}$
+  & 
+  $	\begin{bmatrix}
+       	-0.3153 & -0.5530 & 0.5143 & -0.1797   			\\[0.1em]
+       	-0.6406 & -0.3862 & -0.5828 & 0.4562       	\\[0.1em]
+      	-0.8934 & 0.4503 & -0.2217 & -0.7950			\\[0.1em]
+		-1.0000 & 1.0000 & 1.0000 & 1.0000			  	\\[0.1em]
+  \end{bmatrix}$ \\ \hline
+	\end{tabular}
+\end{center}
+
+The error was then calculated by taking the relative error between the values received in \texttt{eigs} and the above subroutines. The error in eigenvalue has been denoted $\lambda_{error}$, while the error in eigenvectors have been denoted $\mathbf{v}_{error}$. Furthermore, the runtime of each routine can be recorded using the \texttt{timeit} routine available in Matlab. An average of these values have been taken and are given in seconds in the table below. Finally, the cost of memory storage for each subroutine can be computed using the \texttt{whos} function in Matlab. This information has been given in bytes.
+
+\begin{center}
+	\begin{tabular}{| l | l | l | l | l |}
+	\hline
+	& $\lambda_{error}$ & $\mathbf{v}_{error}$ & Runtime (s) & Memory	 (bytes)	\\ \hline
+	RQI\_HHD 
+	& 2.0785e-08
+  	& 1.4192e-06
+  	& 0.1866
+  	& 2592
+  	\\ \hline
+  	QRITER
+  	& 1.3570e-06
+ 	 & 1.4150e-06
+ 	 & 0.0095
+ 	 & 1896
+ 	\\ \hline
+    SSI\_RITZ
+  	& 1.1940e-06
+  	& 3.0984e-06
+  	& 0.0228
+  	& 6904
+  	\\ \hline
+	\end{tabular}
+\end{center}
+
+Although in the above table it can be seen that the \texttt{RQI\_HHD} subroutine generally incurred the lowest error in eigenvalue, it should be noted that this scheme was the least consistent. If the eigenvalues were not produced in ascending order, the routine would produce possibly incorrect results. The \texttt{SSI\_RITZ} subroutine incurred the largest error when calculating eigenvectors possibly because of the extra calculation made when multiplying by the power iterated, orthonormalised guess of eigenvectors.
+
+Note that of the three subroutines presented here, the \texttt{QRITER} subroutine was generally the fastest. This might be due to the fact that it does not involve too many expensive calculations, such as matrix inversion or frequent orthonormalisations. The relative cheapness of this iteration scheme and its simplicity have made it ubiquitously used since the 1960s.
+
+Finally, when comparing the memory storage of each subroutine, one immediately notices the large storage needed to run the \texttt{SSI\_RITZ} subroutine. This is because this iteration scheme is particularly useful at finding the dominant eigenpairs. Although it can find all values, it must call the \texttt{QRITER} iteratively, which is of course really expensive if the system is large. If the reduction size $m$ is of much lower magnitude than the full problem size $n$, the memory used to find the $m$ dominant eigenpairs is significantly reduced.
+
+\section*{Task 5: Sensitivity Analysis}
+
+The Young's modulus and density vary across each element, so that one can consider $E_1$ to be the Young's modulus for element 1, $E_2$ to be the Young's modulus for element 2 and so on. By considering the change in the stiffness and mass matrices \textbf{K} and \textbf{M} with respect to small changes in these elemental parameters, one can find the sensitivity of eigenvalues relative to changes in these elemental parameters. 
+
+\begin{lstlisting}[language=Matlab]
+%% Sensitivity to changes in parameters at each element
+% Inputs: Stiffness matrix K, Mass matrix M, Matrix of eigenvectors V,
+% Matrix of eigenvalues D, Young's modulus across the wing E,
+% Density across the wing rho, change of parameters del_a, and number 
+% of elements N
+% Outputs: Change of eigenvalues del_lambda
+function del_lambda = SENS(K, M, V, D, E, rho, del_a, N)
+    Ktemp = zeros(N); % change in K wrt to elemental Young's modulus
+    Mtemp = zeros(N); % change in M wrt to elemental density
+    S = zeros(N, 2*N); % sensitivity matrix
+
+    for i = 1:N % Loop over elements
+        if i == 1 
+            % First element only has one contribution
+            Ktemp(1, 1) = (K(1, 1) + K(1,2))/(E(1));
+        else
+            % Uses the form of stiffness matrix K to find elemental
+            % contributions
+            Ktemp(i-1,i-1) = -K(i-1, i)/(E(i));
+            Ktemp(i-1, i) = K(i-1, i)/(E(i));
+            Ktemp(i, i-1) = Ktemp(i-1, i); 
+            Ktemp(i, i) = Ktemp(i-1,i-1);
+        end
+        for j = 1:N % Loop over eigenvalues
+           S(j, i) = V(:,j)'*Ktemp*V(:,j); % Calculate sensitivity
+        end
+        Ktemp = zeros(N); % Reinitialise the change in K matrix
+    end
+    for i = 1:N
+        if i == 1
+            Mtemp(1,1) = (M(1,1) - 2*M(1,2))/rho(1);
+        else
+            % Uses the form of mass matrix M to find elemental
+            % contributions
+            Mtemp(i-1, i-1) = 2*M(i, i-1)/rho(i);
+            Mtemp(i, i-1) = M(i, i-1)/rho(i);
+            Mtemp(i-1, i) = Mtemp(i, i-1);
+            Mtemp(i, i) = Mtemp(i-1, i-1);
+        end
+        for j = 1:N
+            S(j, i+N) = V(:,j)'*(-D(j,j)*Mtemp)*V(:,j);
+        end
+    end
+    
+    del_lambda = S*del_a; % Calculate the change in eigenvalues
+        for i = 1:N
+        del_lambda(i) = del_lambda(i)/D(i,i); % Calculate relative change
+    end
+end
+\end{lstlisting}
+
+Note that the above subroutine take matrices \textbf{K} and \textbf{M} as inputs, and does not inherently include how the matrices are generated. Rather it uses the form of stiffness and mass matrices to find elemental contributions. This means that the above subroutine may not hold for systems with elemental contributions markedly different from the one given.
+
+The effect of small changes in the elemental parameters were tested and it was found that in general, the least dominant eigenvalue was the most sensitive to changes in parameters. However, depending on which element experienced a change in Young's modulus, different eigenvalues would experience varying degrees of change. For example, the most dominant eigenvalue felt significant changes when the Young's modulus corresponding to the last element was changed. Furthermore, all the eigenvalues felt significant changes when the density of the last element was altered.
+
+\end{document}

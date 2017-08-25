@@ -1,0 +1,762 @@
+\documentclass[12pt]{article}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{listings}
+\usepackage{wrapfig}
+\usepackage{amssymb}
+\usepackage{parcolumns}
+\usepackage{amsbsy}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{setspace}
+\usepackage{grffile}
+\usepackage{verbatim}
+\usepackage[margin=1in]{geometry}
+\usepackage[]{mcode}
+\usepackage[shortlabels]{enumitem}
+
+
+
+%\usepackage[autolinebreaks]{mcode}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyhead[R]{\footnotesize \thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\onehalfspacing
+
+\newcommand{\psibold}{\mbox{\boldmath$\psi$}}
+\newcommand{\nablabold}{\mbox{\boldmath$\nabla$}}
+\newcommand{\sigmabold}{\mbox{\boldmath$\sigma$}}
+
+\renewcommand{\thetable}{\Roman{table}}
+
+\setlength{\parskip}{2ex}
+\setlength{\parindent}{0pt}
+
+%\bibliographystyle{my_bib_style}
+
+\def\MM#1{\boldsymbol{#1}}
+
+\begin{document}
+
+\title{\textbf{\Large{AEM-ADV08}\\ \Large{Introduction to Computational Linear Algebra}\\Coursework 1}}
+
+\author{Student Name: James Gross \hspace{1 cm} CID: 01305321    }
+\date{}
+\maketitle
+Due date: Friday, 10 February 2017, 23:00
+
+You should submit the following documents for this coursework:
+\begin{enumerate}
+\item A professionally-typed pdf document (no hand-writing, or smartphone photos of handwritten solutions), formatted in Latex or MS Word using the provided templates, containing answers to all the questions. Do not modify the margins, use a font size of 12 and use a line spacing set at 1.15. You must answer the questions in order as they are in this document and as they are in the template. Include any Matlab functions and scripts (appropriately commented to facilitate reading) used to attempt the coursework \underline{\textbf{within}} your answers in the space provided in the template (not in an Appendix). These are just presented for checking; the pdf document should be self-contained and markable without reference to the Matlab codes and without the need to run the scripts; e.g. if a script produces an output answer, clearly state what the answer is as indicated in the template; if a script produces a plot, clearly display the plot with large enough font size, grid and axis labels.
+\end{enumerate}
+You should write your own individual code and answers to questions. The programs and question answers will be checked for similarities.
+
+Questions have different weight as indicated at the start of each question. 
+
+
+\newpage
+
+\section*{Question 1: 20\% of total}
+Consider the following matrix-vector system $A\MM{x}=\MM{b}$
+
+\begin{equation}
+	\begin{bmatrix}
+       \alpha & -1 & -1 & -1   \\[0.3em]
+       1& 1 & -1 & -1        \\[0.3em]
+       0& 1 & 1 & -1			  \\[0.3em]
+			 0& 0 & 1 & 1			  \\[0.3em]
+  \end{bmatrix}
+	[\MM{x}] =
+	\begin{bmatrix}
+       \alpha-3 \\[0.3em]
+       0\\[0.3em]
+       1\\[0.3em]
+			 2\\[0.3em]
+  \end{bmatrix}
+\end{equation}
+where $\alpha = 10^{-p}$. The variable $p$ will be made to vary and at each stage some checks on the condition of A and the suitability of the algorithms used will be made. 
+
+The matrix $A$ and vector $\MM{b}$ have been chosen in such a way that the solution $\MM{x}$ is always $(1, 1, 1, 1)^\mathrm{T}$. 
+
+An efficient subroutine $A1 = \mathrm{\emph{gefa}}(A,n)$ is given to you below. \emph{gefa} takes the matrix A and its size $n$ and returns a \emph{new} single matrix $A$ where \emph{new} $A$ now consists of the upper triangular matrix $U$ and the multipliers are stored in the otherwise 0 positions below the diagonal. This is therefore the $LU$ factorisation \emph{without pivoting} of $A$.
+\begin{lstlisting} 
+function A1 = gefa(A,n)
+
+for k = 1:n-1
+    A(k+1:n,k) = A(k+1:n,k)/A(k,k);
+    
+    for j = k+1:n
+        A(k+1:n,j) = A(k+1:n,j) - A(k,j)*A(k+1:n,k);
+    end
+end
+A1 = A;   %copying A into A1 for clarity
+\end{lstlisting}
+
+Alternatively, we can use a MATLAB built-in scheme as follows:
+\begin{lstlisting} 
+A1 = lu(sparse(A),0);
+A1 = full(A1);
+\end{lstlisting}
+
+or
+
+\begin{lstlisting} 
+[L, U] = lu(sparse(A),0);
+L = full(L);
+U = full(U);
+\end{lstlisting}
+
+
+
+\begin{enumerate}[(a)] % (a), (b), (c), ...
+\item We will now use the subroutines \emph{gefa} and \emph{gesl} (given on Blackboard), or the MATLAB in-built function lu(sparse(A),0) and the subroutine \emph{gesl}, to solve the system $A\MM{x}=\MM{b}$. Obtain and list in your report the computed solution of $A\MM{x}=\MM{b}$ for $p=0$. Confirm this equals $(1, 1, 1, 1)^\mathrm{T}$. Compute and list in your report the following computations in the form of a table: 
+
+i) the condition number of $A$, 
+
+ii) the relative error $\displaystyle{\frac{\|{\MM{x}-\hat{\MM{x}}}\|_\infty}{\|{\MM{x}}\|_\infty}}$ where $\hat{\MM{x}}$ is the computed solution and $\MM{x}$ the true solution, 
+
+iii) the relative residual $\displaystyle{\frac{\|A\hat{\MM{x}}-\MM{b}\|_\infty}{\|\MM{b}\|_\infty}}$, 
+
+iv) $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$,
+
+v) $\displaystyle{\alpha_{\mathrm{ALG}} = \frac{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert \|_\infty}{\|A\|_\infty}}$
+
+\item Repeat the procedure of part (a) for $p = 1, 2, 4, 6, 8, 10, 12, 14$ again listing the output $\hat{\MM{x}}$ and the computations i) to v) in table form. Comment on your results. (Note: you may want to use the command: ``format long'' in MATLAB in order to observe more decimal places in your computations.)
+
+\end{enumerate}
+
+\textbf{Question 1: Answer}
+\begin{center}
+	\scriptsize
+	\begin{tabular}{| l | l | l | l | l | l | l | l | l | l |}
+		\hline
+		p & 0 & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 \\ \hline
+		$\hat{\MM{x}}$ 
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$ 
+		& $\begin{pmatrix}1.00000\\1\\1\\1\end{pmatrix}$  
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$
+		& $\begin{pmatrix}1.00000\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1.00000\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1.00009\\1.00006\\0.999944\\1.00000\end{pmatrix}$ 
+		& $\begin{pmatrix}1.02141\\1\\1\\1\end{pmatrix}$ \\ \hline
+	\end{tabular}
+\end{center}
+
+The computed solutions for p = 1, 2, 4, 8, 10, 12 and 14 are shown above, where results have been shown to 6 significant figures for compactness. It is apparent from the data above that as the system is perturbed from the original $p=0$, the solution becomes less accurate. In order to see why, note the following table.
+
+\begin{center}
+	\footnotesize
+		\begin{tabular}{| l | l | l | l | l | l |}
+		\hline p  
+		& $ cond_{\infty}(A) $ 
+		& $\displaystyle{\frac{\|{\MM{x}-\hat{\MM{x}}}\|_\infty}{\|{\MM{x}}\|_\infty}}$ 
+		& $\displaystyle{\frac{\|A\hat{\MM{x}}-\MM{b}\|_\infty}{\|\MM{b}\|_\infty}}$ 
+		& $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$ 
+		& $\displaystyle{\alpha_{\mathrm{ALG}}}$ \\ \hline
+    		0 & 8 & 0 & 0 & 6 & 1.5 \\ \hline
+    		1 & 14.54545 & 3.10862446895044e-15 & 7.27387498892344e-16 & 60 
+    		& 15 \\ \hline
+    		2 & 15.8415841584158 & 2.13162820728030e-14 & 7.12919132869666e-15 
+    		& 600 & 150 \\ \hline
+    		4 & 15.9984001599840 & 2.33058017329313e-12 & 5.55278051317572e-13 
+    		& 60000 & 15000 \\ \hline
+    		6 & 15.9999840000160 & 2.50800269441243e-10 & 4.65925971755731e-11 
+    		& 6000000 & 1500000 \\ \hline
+    		8 & 15.9999998400000 & 6.07747097092215e-09 & 2.02582366372680e-09 
+    		& 600000000 & 150000000 \\ \hline
+    		10 & 15.9999999984000 & 8.27403709990904e-08 & 2.75801236672828e-08 
+    		& 60000000000 & 15000000000 \\ \hline
+    		12 & 15.9999999999840 & 8.89005823410116e-05 & 6.66397259852551e-05 
+    		& 6000000000000 & 1500000000000 \\ \hline
+    		14 & 15.9999999999998 & 0.0214051826551440 & 0.00713506088504803 
+    		& 600000000000000 & 150000000000000 \\ \hline
+	\end{tabular}
+\end{center}
+
+Note that in the original system the condition number with respect to the original system is relatively small. As the system is perturbed, the condition number increases, making the matrix A ill-conditioned. Without pivoting, these systems will incur more error as they are further perturbed i.e. as p increases. This effect is quite apparent from the change in relative error and relative residual error shown in the above table.
+
+In particular, the relative error for Gaussian elimination is dictated by the following inequality.
+\begin{equation}
+\label{eq:relative}
+	\frac{\|{\MM{x}-\hat{\MM{x}}}\|_\infty}{\|{\MM{x}}\|_\infty} \leq \frac{\rho_n cond_{\infty}(A) }{1-\rho_n cond_{\infty}(A) \epsilon_m}\epsilon_m
+\end{equation}
+
+where $\rho_n = \frac{2n}{1-n\epsilon_m}\alpha_{\mathrm{ALG}}$ and $\epsilon_m$ is the machine epsilon, which for double precision in Matlab will take value $\epsilon_m = 2.220 \times 10^{-16}$
+
+Therefore, the round-off error incurred by Gaussian elimination is affected by the value of $\displaystyle{\alpha_{\mathrm{ALG}}}$, which in turn is dictated by the value of $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$. 
+
+In the above table, it is readily apparent that as p increases, the aforementioned terms increase at an exponential rate. This will have the effect of increasing the relative error of the system.
+
+In order to decrease the relative error, the values of $\displaystyle{\alpha_{\mathrm{ALG}}}$ and $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$ must be minimised. This can be accomplished by pivoting the system as Gaussian elimination is performed.
+
+\newpage
+\section*{Question 2: 25\% of total}
+In this question, we're going to use the matrix-vector system $A\MM{x}=\MM{b}$ of Question 1. In this case, in an attempt to obtain correct solutions, partial pivoting is to be employed. You are required to write a script along the lines of \emph{gefa} but modified such that partial pivoting is utilised. Call your script \emph{gefapp} (i.e. \emph{G}auss \emph{E}limination \emph{F}actorisation with \emph{P}artial \emph{P}ivoting). The pseudo-code given to you in Blackboard may help. Present your code, well commented and formatted.
+
+Make a copy of the subroutine \emph{gesl} and save it as \emph{geslpp}. Modify the code in this newer subroutine so that now the matrix $A1$ (a combination of $L$ and $U$) and the row interchanges are accepted as subroutine inputs and a solution $\hat{\MM{x}}$ is computed. Present your code, well commented and formatted.
+
+Test your subroutine on the system $A\MM{x}=\MM{b}$  for $p = 0, 1, 2, 4, 6, 8, 10, 12, 14$  listing the output $\hat{\MM{x}}$ and the computations i) to v) in table form. Comment on your results and compare with the results obtained in Question 1 (similarities, differences, reasons).
+
+\textbf{Question 2: Answer} (Listing of gefapp and geslpp; outputs i) to v); comments and comparisons with Q1)
+\\
+The following subroutines solve systems of equations using Gaussian elimination with partial pivoting.
+\begin{lstlisting}
+%% James Gross 
+% CID: 01305321
+
+function [A,P] = gefapp(A,n)
+P = eye(n); %Initialise permutation matrix
+for k = 1:n-1
+    [maxA, l] = max(A(k:n,k)); %Search columns for index of maximum value
+    l = l+k-1; %Make given index consistent with matrix system
+    A([k l],:) = A([l k],:); %Swap rows of A
+    P([k l],:) = P([l k],:); %Swap rows of permutation matrix P
+    %Continue reducing matrix to LU factorization as in gefa.m
+    A(k+1:n,k) = A(k+1:n,k)/A(k,k);
+    for j = k+1:n
+        A(k+1:n,j) = A(k+1:n,j) - A(k,j)*A(k+1:n,k);
+    end
+end
+\end{lstlisting}
+\begin{lstlisting}
+%% James Gross
+% CID: 01305321
+
+function x = geslpp(a,n,b,P)
+b = P*b;%Multiply b by the permutation matrix
+%Backward and forward substitution as in gesl.m
+for k = 1:n-1
+    b(k+1:n) = b(k+1:n)-b(k)*a(k+1:n,k);
+end
+for k = n:-1:1
+    b(k) = b(k)/a(k,k);
+    b(1:k-1) = b(1:k-1)-b(k)*a(1:k-1,k);
+end
+x = b;
+\end{lstlisting}
+
+Using the above subroutines, solutions to the given system incur a significantly reduced error.
+
+\begin{center}
+	\scriptsize
+	\begin{tabular}{| l | l | l | l | l | l | l | l | l | l |}
+		\hline
+		p & 0 & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 \\ \hline
+		$\hat{\MM{x}}$ 
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$  
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1\\1\\1\\1\end{pmatrix}$ 
+		& $\begin{pmatrix}1.00000\\1.00000\\1.00000\\1.00000\end{pmatrix}$ \\ \hline
+	\end{tabular}
+\end{center}
+
+To see why, note the following table.
+
+\begin{center}
+	\scriptsize
+		\begin{tabular}{| l | l | l | l | l | l |}
+		\hline p  
+		& $ cond_{\infty}(A) $ 
+		& $\displaystyle{\frac{\|{\MM{x}-\hat{\MM{x}}}\|_\infty}{\|{\MM{x}}\|_\infty}}$ 
+		& $\displaystyle{\frac{\|A\hat{\MM{x}}-\MM{b}\|_\infty}{\|\MM{b}\|_\infty}}$ 
+		& $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$ 
+		& $\displaystyle{\alpha_{\mathrm{ALG}}}$ \\ \hline
+    		0 & 8 & 0 & 0 & 6 & 1.5 \\ \hline
+    		1 & 14.54545 & 0 & 0 & 6.300 & 1.575 \\ \hline
+    		2 & 15.8415841584158 & 2.22044604925031e-16 & 7.42624096739235e-17 & 5.13 & 1.2825 \\ \hline
+    		4 & 15.9984001599840 & 4.44089209850063e-16 & 1.48034671105724e-16 & 5.0013 & 1.250325 \\ \hline
+    		6 & 15.9999840000160 & 0 & 0 & 5.000013 & 1.25000325\\ \hline
+    		8 & 15.9999998400000 & 0 & 0 & 5.00000013 & 1.2500000325 \\ \hline
+    		10 & 15.9999999984000 & 0 & 0 & 5.0000000013 & 1.250000000325 \\ \hline
+    		12 & 15.9999999999840 & 0 & 0 & 5.000000000013 & 1.25000000000325 \\ \hline
+    		14 & 15.9999999999998 & 4.44089209850063e-16 & 1.48029736616688e-16 & 5.00000000000013 & 1.25000000000003 \\ \hline
+	\end{tabular}
+\end{center}
+
+Note that the condition number has not changed. This is because it is an inherent property of the matrix and permutations will not affect it. However, it is very clear from the above table that by introducing pivoting to the Gaussian elimination, the values of $\displaystyle{\alpha_{\mathrm{ALG}}}$ and $\displaystyle{\|\lvert \hat{L} \rvert \lvert \hat{U} \rvert} \|_\infty$ are bounded, and therefore stay relatively small.
+
+By equation (\ref{eq:relative}), the relative error incurred will also be negligibly small, and the system will produce the solutions that are markedly closer to the true solution.
+\newpage
+\section*{Question 3: 5\% of total}
+Derive a lower bound for $\mathrm{cond}_p(A)$. 
+
+\textbf{Question 3: Answer}
+
+The condition number of A, with respect to the p-norm is defined as follows.
+\begin{equation}\label{eq:condition}
+\mathrm{cond}_p(A) = \lvert\lvert A \rvert \rvert_p \lvert \lvert A^{-1} \rvert \rvert_p
+\end{equation}
+
+For any p-norm, equation (\ref{eq:condition}) will respect matrix multiplication. That is, $\lvert\lvert AB \rvert \rvert_p \leq \lvert\lvert A \rvert \rvert_p \lvert \lvert B \rvert \rvert_p$.
+
+Therefore,
+$\mathrm{cond}_p(A) = \lvert\lvert A \rvert \rvert_p \lvert \lvert A^{-1} \rvert \rvert_p \geq \lvert\lvert AA^{-1} \rvert \rvert_p$ will be true for any p-norm.
+
+Now, $AA^{-1} = I$ is true for any non-singular $A$, where $I$ is the identity matrix.
+
+Considering matrix $I$ only has one unit entry in every row and column, it is trivially true that $\lvert\lvert I \rvert \rvert_p = 1$.
+
+This implies that for any non-singular matrix $A$ and any matrix p-norm that the following is true.
+
+\begin{equation}
+\mathrm{cond}_p(A) \geq \lvert\lvert I \rvert \rvert_p = 1
+\end{equation}
+
+Therefore, the lower bound for $\mathrm{cond}_p(A)$ is 1.
+
+\newpage
+\section*{Question 4: 20\% of total}
+Approximations to the solution $u(x)$, $0 \leq x \leq 1$, of the two-point boundary value problem
+
+\begin{equation}
+-\frac{\mathrm{d}^2 u}{\mathrm{d}x^2}+b(x)\frac{\mathrm{d} u}{\mathrm{d} x}+c(x)u = f(x)
+\end{equation}
+
+with boundary conditions $u(0) = \gamma_-$ and $u'(1) = \gamma_+$ may be obtained in the following way. Split $[0,1]$ into $p > 1$ equal subintervals using the points $0 \equiv x_0 < x_1 < \ldots < x_p \equiv 1$ where $x_i = ih$ and $h = 1/p$. Estimates $u_1, \ldots, u_p$ of the exact values $u(x_1), \ldots, u(x_p)$ are calculated by solving the $p$ linear equations
+
+\begin{equation}
+-\left [1+\frac{h}{2}b(x_i) \right ]u_{i-1} + \left [ 2 + h^2 c(x_i) \right ]u_i - \left [ 1-\frac{h}{2}b(x_i) \right ]u_{i+1} = h^2 f(x_i)
+\end{equation}
+
+for $i = 1, \ldots, p-1$ and
+
+\begin{equation}
+-2u_{p-1} + \left[2 + h^2 c(x_p) \right] u_p = h^2 f(x_p) + 2h \left[ 1 - \frac{h}{2}b(x_p) \right] \gamma_+
+\end{equation}
+
+where $u_0 = \gamma_-$.
+
+Explain why the $p \times p$ coefficient matrix of the system of equations is banded with bandwidth 1. Also explain why it will be strictly row-diagonally dominant if $c(x) > 0$, $\lvert b(x) \rvert \leq \frac{2}{h}$ for $x \in [0,1]$ and irreducibly diagonally dominant if $c(x) \geq 0$, $\lvert b(x) \rvert < \frac{2}{h}$ for $x \in [0,1]$.
+
+Write a program which calculates approximate solutions to differential equations of the above general form by calling the subroutines \emph{gefab.m} and \emph{geslb.m} (listed below). Test your program on the example:
+
+$\displaystyle{b(x) \equiv \frac{x}{8-x^2}, \hspace{1cm} c(x) \equiv 0, \hspace{1cm} f(x) \equiv -2 \left(\frac{4}{8-x^2}\right)^2, \hspace{1cm} \gamma_- \equiv 2 \ln{\frac{7}{8}}, \hspace{1cm} \gamma_+ \equiv \frac{4}{7}}$.
+
+Use $p = 10, 20, 40$ and compare your computed results with the exact solution \\ $\displaystyle{u(x) = 2 \ln{\frac{7}{8-x^2}}}$ by calculating the $\infty-$norm of the error vector in each case. Check that your error approximately quarters when $p$ is doubled.
+
+\newpage 
+
+\begin{lstlisting}
+function ab = gefab(ab, n, ml, mu)
+
+m = mu+1;
+for k = 1:n-1
+    lm = min(ml,n-k);
+    ab(m+1:m+lm,k) = ab(m+1:m+lm,k)/ab(m,k);
+    ju = min(mu+k,n);
+    mm = m;
+    for j = k+1:ju
+        mm = mm-1;
+        ab(mm+1:mm+lm,j) = ab(mm+1:mm+lm,j) - ab(mm,j)*ab(m+1:m+lm,k);
+    end
+end
+\end{lstlisting}
+
+\begin{lstlisting}
+function x = geslb(ab, n, ml, mu, b)
+
+m = mu+1;
+
+if ml ~= 0
+    for k = 1:n-1
+        lm = min(ml,n-k)
+        b(k+1:k+lm) = b(k+1:k+lm)-b(k)*ab(m+1:m+lm,k);
+    end
+end
+
+for k = n:-1:1
+    b(k) = b(k)/ab(m,k);
+    lm = min(k,m)-1;
+    b(k-lm:k-1) = b(k-lm:k-1)-b(k)*ab(m-lm:m-1,k)
+end
+
+x = b;
+\end{lstlisting}
+
+\textbf{Question 4: Answer} (why coefficient matrix is banded with bandwidth 1; strict row diagonal dominance; irreducible diagonal dominance; listing of code that utilises given functions; graph of error vs $p$)
+
+The above discretisation is such that for any value of $u_i$, there is a dependency on the value directly before and the value directly after (i.e. $u_{i-1}$ and $u_{i+1}$). This implies a matrix system of the following form.
+\begin{equation*}
+\scriptsize
+	\begin{bmatrix}
+       2 + h^2 c(x_1) & -[1-\frac{h}{2}b(x_1)] & 0 & \cdots  & 0   \\[0.3em]
+       -[1+\frac{h}{2}b(x_2)] & 2 + h^2 c(x_2) & -[1-\frac{h}{2}b(x_2) &  \cdots & 0        \\[0.3em]
+       \vdots & \ddots & \ddots & \ddots & \vdots	 \\[0.3em]
+       0 & \cdots & -[1+\frac{h}{2}b(x_{p-1})] 	& 2 + h^2 c(x_{p-1}) & -[1-\frac{h}{2}b(x_{p-1})]  \\[0.3em]
+       	0 & \cdots & 0 & -2 	& 2 + h^2 c(x_p)	  \\[0.3em]
+	\end{bmatrix} 
+	\begin{bmatrix}
+       \ u_1 \\[0.3em]
+       u_2\\[0.3em]
+       \vdots\\[0.3em]
+		u_{p-1}\\[0.3em]
+		u_p\\[0.3em]
+  \end{bmatrix} =
+  \begin{bmatrix}
+       \ h^2 f(x_1) + (1+\frac{h}{2}b(x_1))u_0 \\[0.3em]
+       h^2 f(x_2)\\[0.3em]
+       \vdots\\[0.3em]
+		h^2 f(x_{p-1})\\[0.3em]
+		h^2 f(x_p) + 2h(1-\frac{h}{2}b(x_p))\gamma_+\\[0.3em]
+  \end{bmatrix}
+\end{equation*}
+
+Note that $u_0$ has been absorbed by the vector on the right-hand side.
+
+From this, it is clear that if $j > i+1$ or $i > j+1$ then $A_{ij}=0$. This means the matrix $A$ is a banded matrix with upper bandwidth 1 and lower bandwidth 1.
+
+A $n\times n$ matrix $A$ is strictly row-diagonally dominant if 
+$$|A_{ii}| > \sum_{j \neq i}^{n} |A_{ij}|, \quad  i = 1,...n$$
+
+If $c(x)>0$ for $x \in [0,1]$, then $|A_{ii}| > 2$ for $x \in [0,1]$. Furthermore, $|b(x)| \leq \frac{2}{h}$ for $x \in [0,1]$ implies that $\sum_{j \neq i}^{p} |A_{ij}| \leq 2$ for any row p and for all $x \in [0,1]$. Therefore, if the aforementioned conditions are met, this system will be strictly row-diagonally dominant.
+
+A $n\times n$ matrix $A$ is irreducibly diagonally dominant if: \\
+1. $A$ is diagonal dominant: $|A_{ii}| \geq \sum_{j \neq i}^{n} |A_{ij}|$ \\
+2. At least one row k of $A$ must satisfy $|A_{kk}| > \sum_{j \neq k}^{n} |A_{kj}|$ \\
+3. A is irreducible i.e. it is not possible to split the set $\{1, 2,..., n\}$ into two non-empty disjoint sets $I$ and $J$ with $A_{ij} = 0 $ whenever $i \in I$ and $j \in J$
+
+If $c(x) \geq 0$ for $x \in [0,1]$, then $|A_{ii}| \geq 2$ for $x \in [0,1]$. Also,  $|b(x)| < \frac{2}{h}$ for $x \in [0,1]$ implies that $\sum_{j \neq i}^{p} |A_{ij}| \leq 2$. Therefore the matrix $A$ is diagonally dominant.
+
+Note that for rows $i = 1,...,p-1$ this $\sum_{j \neq i}^{p} |A_{ij}| < 2$. Therefore, $|A_{kk}| > \sum_{j \neq k}^{n} |A_{kj}|$ for $k = 1, ..., p-1$.
+
+For condition 3, note that this statement is equivalent to saying that it not possible to permute rows and columns of $A$ such that it can be written in block upper triangular form. That is, it is not possible to permute to rearrange vector entries so that
+$$ A = \begin{bmatrix}
+B & 0 \\
+C & D \\
+\end{bmatrix}$$
+
+where $B$, $C$ and $D$ are themselves square matrices. 
+
+By inspection, it is easy to see that this matrix is in tridiagonal form and it is therefore not possible to rearrange it so that it is in block upper triangular form.
+
+This implies that given the aforementioned constraints on functions $b$ and $c$, matrix $A$ is irreducibly row-diagonally dominant.
+
+The following code creates the system and solves it using \emph{gefab.m} and \emph{geslb.m} functions.
+
+\begin{lstlisting}
+%% James Gross
+% CID: 01305321
+
+format long
+clear
+%Initialise the dimensions
+p = 10; h = 1/p;
+x = linspace(0,1,p+1);
+%Define the bandwidth and size of matrix
+mu = 1; ml = 1; n = mu+ml+1;
+%Define the given parameters
+g_m = 2*log(7/8); g_p = 4/7;
+c = 0;
+for i = 1:p
+    b(i) = x(i+1)/(8-x(i+1)^2);
+    f(i) = -2*(4/(8-x(i+1)^2))^2;
+end
+%Define the connectivity matrix
+A(1, 2:p) = -(1 - 0.5*h*b(1:p-1));
+A(2, 1:p) = 2 + h^2*c;
+A(3, 1:p-2) = -(1 + 0.5*h*b(2:p-1));
+A(3, p-1) = -2;
+%Initialize the solution vector
+B(1:p, 1) = h^2 * f(1:p);
+B(1, 1) = B(1) + (1 + 0.5*h*b(1))*g_m;
+B(p, 1) = B(p) + 2*h*(1 - 0.5*h*b(p) )*g_p;
+%Call given subroutines to solve matrix system
+A = gefab(A, p, ml, mu);
+u1 = geslb(A, p, 1, 1, B);
+%Compute the true solution
+for i= 1:p
+    u(i, 1) = 2 * log(7/ (8-x(i+1)^2) );
+end
+%Compute the relative error
+re = max(abs(u - u1)) / max(abs(u));
+\end{lstlisting}
+Note the above routine creates matrix $A$ in banded form, as to reduce computational cost and solve the system more efficiently.
+
+In this coursework, a loglog plot is used to show the variation in error as p increases. If the error approximately quarters when $p$ doubles, one would expect a relatively linear loglog plot with a gradient of nearly $-2$.
+
+\begin{figure}[ht]
+	\centering
+    \includegraphics[width=18cm]{loglog.png}
+\end{figure}
+
+The loglog plot shown above is indeed approximately linear, and using $gradient = \\ \mathrm{\emph{polyfit}}(log(p), log(re), 1)$ it is shown that the $gradient = -2.003916$. Therefore, the error will approximately quarter when $p$ is doubled.
+
+\newpage
+
+
+\section*{Question 5: 5\% of total}
+Consider the matrix
+
+\begin{equation}
+	\begin{pmatrix}
+       1 & \alpha & \alpha \\[0.3em]
+       \alpha& 1 & \alpha \\[0.3em]
+       \alpha& \alpha & 1			  \\[0.3em]
+  \end{pmatrix}
+\end{equation}
+
+For what values of $\alpha$ is:
+
+i) the matrix diagonally dominant?
+
+ii) does the Jacobi method converge?
+
+\textbf{Question 5: Answer}
+
+Matrix $A$ is diagonal dominant if $|A_{ii}| \geq \sum_{j \neq i}^{n} |A_{ij}|$. Therefore, $1 \geq |2 \alpha|$ if this matrix is to be diagonally dominant. This implies $\frac{-1}{2} \leq \alpha \leq \frac{1}{2}$.
+
+The Jacobi iteration method is defined as follows. 
+$$D \boldsymbol{x}^{k+1} = \boldsymbol{b} - (L+U) \boldsymbol{x}^k $$
+where $D$ is the diagonal matrix containing the diagonal entries of matrix $A$ with zeros elsewhere, $L$ is the lower triangular matrix containing the lower triangular entries of $A$ with zeros elsewhere, and $U$ is the upper triangular matrix containing the upper triangular entries of $A$ with zeros elsewhere.
+
+Note that $D$ is the matrix multiplier of $\boldsymbol{x}^{k+1}$; denote it $M$. $L+U$ is the matrix multiplier of $\boldsymbol{x}^k$; denote it $N$.
+
+It can be shown that any iterative method will converge if the \textit{spectral radius} of the iteration matrix $C=-M^{-1}N$ is less than 1.
+\begin{equation}
+\label{eq:spectral}
+\rho (C) = \max\limits_{1 \leq i \leq n}|\lambda _i|<1
+\end{equation}
+where $\lambda_i$ are the eigenvalues of matrix $C$.
+
+For the case above, $M = \begin{pmatrix}1 & 0 & 0 \\[0.3em]
+0 & 1 & 0 \\[0.3em]
+0 & 0 & 1\\[0.3em]\end{pmatrix}$ and $ N = \begin{pmatrix}
+0 & \alpha & \alpha \\[0.3em]\alpha& 0 & \alpha \\[0.3em]
+\alpha& \alpha & 0 \\[0.3em]\end{pmatrix}$, which implies $C=\begin{pmatrix}
+0 & -\alpha & -\alpha \\[0.3em]
+-\alpha& 0 & -\alpha \\[0.3em]
+-\alpha& -\alpha & 0	\\[0.3em]\end{pmatrix}$.
+  
+The eigenvalues are such that $det(C- \lambda I)=0$. This gives the following characteristic polynomial.
+$$\lambda^3 - 3\alpha^2 \lambda + 2 \alpha^3=0$$
+
+Using polynomial division, the eigenvalues of matrix $C$ are found to be $\lambda_1 = \alpha$ and $\lambda_2 = -2\alpha$, where $\lambda_1$ is a repeated root of the characteristic polynomial.
+
+Therefore, the spectral radius of the iteration matrix $C$ is $2\alpha$, if $ \alpha > 0$, and is $ - 2\alpha$ if $\alpha<0$. By equation (\ref{eq:spectral}) the Jacobi method will converge if $\frac{-1}{2}< \alpha < \frac{1}{2}$.
+
+
+\newpage
+\section*{Question 6: 25\% of total}
+Consider the heat equation in the form
+\begin{equation}
+\label{eq:heat}
+\frac{\partial T}{\partial t}(x,y) = \alpha \nabla^2T(x,y)+q(x,y),
+\end{equation}
+where $\alpha$ is the diffusivity, $T$ is the temperature in the $xy$-plane with boundary conditions $T=0$ on $x=0$, $x=1$, $y=0$ and $y=1$ and $q$ is the temperature source distribution. This equation models the distribution of temperature in a lamina where its side edges are kept at a fixed temperature and in its internal area, a source of temperature varies spatially.
+
+i) Discretise this equation using a Forward-in-Time discretisation for the term $\frac{\partial T}{\partial t}(x,y)$ and a central Crank-Nicholson discretisation scheme for the $\alpha \nabla^2T(x,y)$ term. Use $i,j=1,..., N-1$, where $T_{i,j}^n$ is the temperature at time $n$ at points $x = i\Delta x$, $y=j\Delta x$, $t=\Delta t$, $q_{i,j}$ is the temperature source at $x=i\Delta x$, $y = j\Delta x$ and $N+1$ is the number of grid points in each direction (total number of grid points $= (N+1) \times (N+1)$). The equation does not need to be solved when $i=0$, $i=N$, $j=0$ and $j=N$ because at these areas, the temperature $T$ is known to be fixed at 0. Write down the differential equation in its discretised form.
+
+ii) Write the vector of temperature values as:
+\begin{equation}
+\label{eq:vector}
+\MM{T^n} = (T_{1,1}^n, T_{2,1}^n, ..., T_{N-1,1}^n, T_{1,2}^n, T_{2,2}^n, ..., T_{N-1,2}^n, ..., T_{N-1,N-1}^n)
+\end{equation}
+and $\MM{q}$ as the vector of source values. Now explain why the equations can be written in the form
+\begin{equation}
+\label{eq:system}
+\left(I+\frac{\sigma}{2}A \right)\MM{T^{n+1}} = \left(I-\frac{\sigma}{2}A \right)\MM{T^{n}}+\Delta t \MM{q},
+\end{equation}
+where $I$ is the identity matrix and $\sigma=\alpha \Delta t/(\Delta x)^2$.
+
+iii) Write a MATLAB code to form the matrix A in \emph{sparse matrix format}. Present your code in the report with sufficient comments to explain each line. The code should be accompanied with an explanation of the general form of the matrix A and how you plan to store and use it in your code.
+
+iv) For $N = 10$, $\Delta t = 0.1$ and $\alpha = 1$, write a MATLAB code that implements this discretisation. The code should use an \emph{iterative solver} within the time stepping loop. As a check, ensure that the temperature evolves to a steady state. \newline For $N = 40$, $q = 10*\mathrm{exp}(-((x-0.5)^4+(y-0.5)^4))$, and an initial condition $T=0$, produce some contour plots of $T$ at various times showing evolution to a steady state. 
+
+\textbf{Question 6: Answer} (Discrete form of differential equation; explanation why equation can be written as in ii); code that stores the required matrices in efficient sparse format; code that solves the system using an iterative (e.g. Jacobi or Gauss-Seidel) method; contour plots)
+
+The forward-in-time Euler discretisation is given by 
+$$\frac{\partial T_{i,j}}{\partial t} \approx \frac{T^{n+1}_{i,j}-T^{n}_{i,j}}{\Delta t}$$
+where $\Delta t$ is the time increment.
+
+The Crank-Nicholson discretisation of $\nabla^2T(x,y)$ is given by a time-averaged centred difference scheme over time step $n$ and $n+1$.
+$$\alpha \nabla^2T_{i,j} \approx \frac{\alpha}{2 (\Delta x)^2}[(T^{n+1}_{i+1,j} + T^{n+1}_{i-1,j} -4 T^{n+1}_{i,j} + T^{n+1}_{i,j+1} + T^{n+1}_{i,j-1}) + (T^{n}_{i+1,j} + T^{n}_{i-1,j} -4 T^{n}_{i,j} + T^{n}_{i,j+1} + T^{n}_{i,j-1})]$$
+where $\Delta x = \Delta y$ has been used.
+
+Using the above discretisations and rearranging so that all time steps $n+1$ are on the left and time steps $n$ are on the right hand side gives
+\begin{multline*}
+	T^{n+1}_{i,j} + \frac{\alpha \Delta t}{2 (\Delta x)^2}(-T^{n+1}_{i+1,j} - T^{n+1}_{i-1,j} +4 T^{n+1}_{i,j} - T^{n+1}_{i,j+1} -T^{n+1}_{i,j-1}) = \\ T^{n}_{i,j} - \frac{\alpha \Delta t}{2 (\Delta x)^2} (-T^{n}_{i+1,j} - T^{n}_{i-1,j} +4 T^{n}_{i,j} -	T^{n}_{i,j+1} - T^{n}_{i,j-1}) + \Delta t q_{i,j}
+\end{multline*}
+
+The linear dependency of point $T^{n}_{i,j}$ to the points in its close proximity in the $(N+1) \times (N+1)$ grid (i.e. those points directly to above, below, to the left and to the right) suggests a matrix system. Representing $\MM{T^n}$ as the vector given by equation (\ref{eq:vector}) and letting $\sigma=\alpha \Delta t/(\Delta x)^2$, the above system can be written 
+\begin{equation*}
+\left(I+\frac{\sigma}{2}A \right)\MM{T^{n+1}} = \left(I-\frac{\sigma}{2}A \right)\MM{T^{n}}+\Delta t \MM{q},
+\end{equation*}
+
+where $A$ is the $(N-1)^2 \times (N-1)^2$ matrix given by 
+
+\begin{center}
+	$A = \begin{bmatrix}
+       B & -I  & \cdots  & 0  \\[0.3em]
+       -I & B  &  \ddots & 0        \\[0.3em]
+       \vdots & \ddots & \ddots & \vdots	 \\[0.3em]
+       0 & \cdots 	& B & -I  \\[0.3em]
+       0 & \cdots & -I 	& B   \\[0.3em]
+
+	\end{bmatrix}$
+	with 
+	$B = \begin{bmatrix}
+       4 & -1  & \cdots  & 0  \\[0.3em]
+       -1 & 4  &  \ddots & 0        \\[0.3em]
+       \vdots & \ddots & \ddots & \vdots	 \\[0.3em]
+       0 & \cdots 	& 4 & -1  \\[0.3em]
+       0 & \cdots & -1 	& 4   \\[0.3em]
+
+	\end{bmatrix}$
+\end{center}
+
+where matrix $A$ has been represented as a block tridiagonal matrix with $I$ being the $(N-1) \times (N-1)$ identity matrix, $0$ being a matrix of zeros and $B$ being a tridiagonal $(N-1) \times (N-1)$ matrix of the above form. 
+
+Note that points on the boundary are defined by the boundary condition and do not depend on neighbouring points. The value of these points have been integrated into the solution vector $b$ on the right hand side.
+
+This matrix becomes very large for even relatively modest choices of the number of grid points. Furthermore, this matrix is very sparse as each row can only have a maximum of 5 non-zero values in it. Therefore, in order to reduce computational cost and make the code more efficient, this system will be stored in sparse format, with only non-zero values and their position in the matrix system being specified.
+
+The following code stores creates the matrix $A$ with $N=10$ grid points in either direction in sparse form.
+\begin{lstlisting}
+%% James Gross
+% CID:01305321
+clear
+
+N1 = 10; % Number of grid points in one direction
+N = N1-2; % Number of unknown grid points in one direction
+% Initialise the entries
+d0 = ones(N^2, 1);
+d1a = d0;
+d1a(N:N:end,1) = 0; % Lower diagonal entries
+d1b = d0;
+d1b(N+1:N:end,1) = 0; % Upper diagonal entries
+d = [-N -1 0 1 N]; % Diagonal positions of non-zero entries
+% Occupy the A matrix with the entries in positions defined
+A = spdiags([-1*d0 -1*d1a 4*d0 -1*d1b -1*d0], d, N^2, N^2);
+\end{lstlisting}
+Note that the system must be defined as in equation (\ref{eq:system}) before using an iterative solver. The following code creates this full system in sparse form.
+\begin{lstlisting}
+%% James Gross
+% CID: 01305321
+
+% Define the parameters
+delx = 1/(N1-1);
+delt = 0.1;
+alph = 1;
+sig = alph*delt/delx^2;
+% Create the multipliers of solutions from time step n+1 and n
+A_L = speye(N^2) + 0.5*sig*A;
+A_R = speye(N^2) - 0.5*sig*A
+\end{lstlisting}
+The subroutine below will use Successive Over Relaxation iteration method to solve for each time step, where the value of the relaxation parameter, $\omega = 1.51$, has been determined by trial and error to be such that the system converges very quickly.
+\begin{lstlisting}
+%% James Gross
+% CID: 01305321
+
+% The function will require a matrix A, a vector input b,
+% an array of row entries, an array of column entries,
+% an inital solution x, and tolerance e
+function x = banded_SOR(A, b, row, column, x, e) 
+m = length(b);
+w=1.51; % Relaxation parameter
+res = 1; % Initialise residual error 
+while res > e % Continue iterative process until tolerance is met
+    for i = 1:m
+        jval = column(find(row == i)); % Find all values of j for each i
+        sum = 0; % Initialise the sum
+        for j = jval % Loop over all j
+            sum = sum + A(i,j)*x(j); % Compute sum
+        end
+        sum = sum - A(i,i)*x(i); % Remove the j=i entry from sum
+        x(i) = w*(b(i)-sum)/A(i,i) + (1 - w)*x(i); % Compute new x(i)
+    end
+    res = max(abs(A*x - b)) / max(abs(b)); % Compute new residual
+end
+
+\end{lstlisting}
+Note that the above subroutine requires arrays of the indices of the non-zero entries in the rows and columns of the matrix $A$. By ignoring zero entries and only performing calculations for non-zero values, the subroutine becomes markedly more efficient for sparse matrices.
+
+This subroutine will only provide solutions for one time step. Later time steps are generated by inserting previous time steps into the solver with an altered solution vector $b$. The following code will use the subroutine above to find consecutive time steps until the maximum relative difference between time steps is less than a desired tolerance i.e. when the solution has decayed to a steady state.
+\begin{lstlisting}
+%% James Gross
+% CID: 01305321
+
+% Define source term
+for i = 1:N
+    for j = 1:N
+        q(i,j) = 10*exp(-(i*delx - 0.5)^4 + (j*delx -0.5)^4);
+    end
+end
+q = reshape(q, [N^2, 1]); % Source term vector
+x = zeros(N^2, 1); % Initial solution
+[row, column] = find(A_L); % Create arrays of indices of non-zero entries
+% Loop over time steps
+for i = 1 : 1000 % Max number of time steps
+    b = A_R*x + delt*q; % Define new b for each time step
+    x1 = banded_SOR(A_L, b, row, column, x, 0.00001); % Call SOR subroutine
+    if i > 4 & mod(i, 5) == 0 % Save every 5 time steps to a text file
+        textfilename = ['Temp' num2str(i) '.txt'];
+        fileID = fopen(textfilename, 'w');
+        fprintf(fileID, '%9.8f\n', x1);
+        fclose(fileID);
+    end
+    if max(abs(x1-x))/max(abs(x)) < 0.0001
+        break % Break loop when arrives at steady state solution
+    end
+    x = x1; 
+end
+\end{lstlisting}
+For $N=10$ grid points, the above system met this tolerance level after 46 time steps. 
+
+For $N=40$ grid points, the same system with the same parameters defined as above met this tolerance level after 402 time steps. 
+
+The figure below shows the temperature contours at time steps 1, 2, 8 and 64.
+
+\begin{figure}[ht] 
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Temp1.png} 
+
+    \label{fig7:a} 
+    \vspace{4ex}
+  \end{subfigure}%% 
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Temp2.png} 
+ 
+    \label{fig7:b} 
+    \vspace{4ex}
+  \end{subfigure} 
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Temp8.png} 
+ 
+    \label{fig7:c} 
+  \end{subfigure}%%
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Temp64.png} 
+
+    \label{fig7:d} 
+  \end{subfigure} 
+  \caption{Temperature contours at various time steps}
+  \label{fig7} 
+\end{figure}
+
+Note in the above figures that the largest temperature difference is between time step 1 and time step 2. By time step 8, the flow has begun to approach the steady state, as there is no discernible difference in the temperature contour graphs. The temperature profile for later time steps look identical to the one for time step 64, as the difference between them approaches zero. When the difference between them is negligible, the solution has reached a steady state.
+
+\newpage
+
+\emph{REFERENCE: Some sub-routines presented here have been adapted from the documents ``M34N4 Computational Linear Algebra'' and ``FORTRAN subroutines'' by Dr Gerald Moore, Department of Mathematics, Imperial College London.}
+
+\end{document}
